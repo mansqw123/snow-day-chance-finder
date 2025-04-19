@@ -52,6 +52,21 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				snow: {
+					'blue': {
+						'50': '#f0f5ff',
+						'100': '#e1ebff',
+						'200': '#c9dbff',
+						'300': '#a4c1ff',
+						'400': '#789dff',
+						'500': '#4b70ff',
+						'600': '#3351f5',
+						'700': '#2643e0',
+						'800': '#2239b6',
+						'900': '#21348f',
+						'950': '#172154',
+					},
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
