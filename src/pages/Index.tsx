@@ -29,7 +29,7 @@ const Index = () => {
 
     try {
       // Using OpenWeatherMap API with metric units
-      const API_KEY = "1d7c31f572a0f98fbe894f5b6188bb90"; // Updated to a working API key
+      const API_KEY = "4d8fb5b93d4af21d66a2948710284366"; // Updated API key
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`
       );
