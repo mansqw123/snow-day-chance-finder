@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Snowflake, CloudSnow, Wind, Thermometer } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 
 const Index = () => {
   const [city, setCity] = useState("");
@@ -28,16 +29,17 @@ const Index = () => {
 
     try {
       // Using OpenWeatherMap API with metric units
-      const API_KEY = "4851471e5c74a0e9841bdc3198b3d5ef"; // Free tier API key
+      const API_KEY = "19f50b077bdaf891a66bb2ee44115ee3"; // Updated API key
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`
       );
 
-      if (!response.ok) {
-        throw new Error("शहर नहीं मिला");
-      }
-
       const data = await response.json();
+      
+      if (data.cod && data.cod !== 200) {
+        console.error("API Error:", data);
+        throw new Error(data.message || "शहर नहीं मिला");
+      }
       
       // Extract the required weather data
       const temp = data.main.temp;
@@ -60,6 +62,8 @@ const Index = () => {
         temp,
         wind
       });
+      
+      toast.success(`${city} का मौसम डेटा मिल गया!`);
     } catch (err) {
       console.error(err);
       setError("कुछ गलत हुआ, कृपया दोबारा कोशिश करें");
