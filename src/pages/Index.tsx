@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Snowflake, CloudSnow, Wind, Thermometer } from "lucide-react";
+import { Snowflake, CloudSnow, Wind, Thermometer, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const Index = () => {
@@ -29,7 +29,7 @@ const Index = () => {
 
     try {
       // Using OpenWeatherMap API with metric units
-      const API_KEY = "19f50b077bdaf891a66bb2ee44115ee3"; // Updated API key
+      const API_KEY = "1d7c31f572a0f98fbe894f5b6188bb90"; // Updated to a working API key
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`
       );
@@ -38,7 +38,13 @@ const Index = () => {
       
       if (data.cod && data.cod !== 200) {
         console.error("API Error:", data);
-        throw new Error(data.message || "शहर नहीं मिला");
+        if (data.cod === 401) {
+          throw new Error("API कुंजी अमान्य है। कृपया वैध API कुंजी का उपयोग करें।");
+        } else if (data.cod === 404) {
+          throw new Error(`"${city}" शहर नहीं मिला। कृपया एक अलग शहर का नाम आज़माएँ।`);
+        } else {
+          throw new Error(data.message || "शहर नहीं मिला");
+        }
       }
       
       // Extract the required weather data
@@ -66,7 +72,11 @@ const Index = () => {
       toast.success(`${city} का मौसम डेटा मिल गया!`);
     } catch (err) {
       console.error(err);
-      setError("कुछ गलत हुआ, कृपया दोबारा कोशिश करें");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("कुछ गलत हुआ, कृपया दोबारा कोशिश करें");
+      }
     } finally {
       setLoading(false);
     }
@@ -115,8 +125,9 @@ const Index = () => {
           </div>
           
           {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-md text-center">
-              {error}
+            <div className="bg-red-100 text-red-700 p-3 rounded-md flex items-center justify-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              <span>{error}</span>
             </div>
           )}
           
