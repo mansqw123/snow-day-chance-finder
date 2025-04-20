@@ -16,7 +16,7 @@ import {
   Star,
   History,
   BookmarkPlus,
-  Share2,
+  Share,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
@@ -26,6 +26,14 @@ const weatherIcons = {
   Rain: <CloudRain className="h-10 w-10 text-blue-500" />,
   Snow: <CloudSnow className="h-10 w-10 text-blue-400" />,
 };
+
+const supportedLanguages = [
+  { code: "hi", label: "हिन्दी" },
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+];
 
 const Index = () => {
   const [cityOrPin, setCityOrPin] = useState("");
@@ -46,18 +54,26 @@ const Index = () => {
     const saved = localStorage.getItem("favorites");
     return saved ? JSON.parse(saved) : [];
   });
-  const [language, setLanguage] = useState<"hi" | "en">("hi");
+  const [language, setLanguage] = useState<"hi" | "en" | "es" | "fr" | "de">(
+    "hi"
+  );
   const [currentDate, setCurrentDate] = useState("");
 
-  // Save favorites to localStorage on change
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // Set formatted current date according to language
   useEffect(() => {
     const now = new Date();
-    const locale = language === "hi" ? "hi-IN" : "en-US";
+    const localeMap: Record<string, string> = {
+      hi: "hi-IN",
+      en: "en-US",
+      es: "es-ES",
+      fr: "fr-FR",
+      de: "de-DE",
+    };
+
+    const locale = localeMap[language] || "en-US";
     const formattedDate = now.toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
@@ -72,16 +88,29 @@ const Index = () => {
       toast.success(
         language === "hi"
           ? `${cityName} को पसंदीदा में जोड़ा गया!`
+          : language === "es"
+          ? `${cityName} añadido a favoritos!`
+          : language === "fr"
+          ? `${cityName} ajouté aux favoris!`
+          : language === "de"
+          ? `${cityName} zu Favoriten hinzugefügt!`
           : `${cityName} added to favorites!`
       );
     }
   };
 
+  // Improved getWeather to handle country codes in cityOrPin input and postal code + country detection
   const getWeather = async (location: string = cityOrPin) => {
     if (!location.trim()) {
       setError(
         language === "hi"
           ? "कृपया शहर या पिन कोड दर्ज करें"
+          : language === "es"
+          ? "Por favor, ingrese una ciudad o código postal"
+          : language === "fr"
+          ? "Veuillez entrer une ville ou un code postal"
+          : language === "de"
+          ? "Bitte geben Sie eine Stadt oder Postleitzahl ein"
           : "Please enter a city or postal code"
       );
       return;
@@ -92,21 +121,49 @@ const Index = () => {
     setResult(null);
 
     try {
-      // Detect if input is postal code (only digits) or city name with letters
-      const isPostalCode = /^[0-9]{3,10}$/.test(location.trim());
-
       const API_KEY = "4d8fb5b93d4af21d66a2948710284366";
 
-      // If postal code, use zip param with country if possible. Assuming default country = US for zip.
-      // If city name, use q param.
+      // Check if input contains comma, parse city and country
+      // Examples: "London,UK" or "Mumbai,IN" or "75001,FR"
+      let city = "";
+      let countryCode = "";
+      let zipOrCityParam = "";
       let url = "";
 
+      const locationTrim = location.trim();
+      if (locationTrim.includes(",")) {
+        const parts = locationTrim.split(",");
+        city = parts[0].trim();
+        countryCode = parts[1].trim().toUpperCase();
+      }
+
+      // Detect postal code (digits) input
+      // If with country code, use zip=ZIP,COUNTRY_CODE form as per OpenWeatherMap docs
+      // Else if digits only, default to US
+      const isPostalCode = /^[0-9]{3,10}$/.test(
+        countryCode ? city : locationTrim
+      );
+
       if (isPostalCode) {
-        // We will try use zip=location, if user wants to specify country they can search by city,countryname e.g "London,UK"
-        url = `https://api.openweathermap.org/data/2.5/weather?zip=${location}&appid=${API_KEY}&units=metric`;
+        if (countryCode) {
+          zipOrCityParam = `${city},${countryCode}`;
+        } else {
+          // Default country to US for zip codes with no country
+          zipOrCityParam = `${countryCode ? city : locationTrim},US`;
+        }
+        url = `https://api.openweathermap.org/data/2.5/weather?zip=${encodeURIComponent(
+          zipOrCityParam
+        )}&appid=${API_KEY}&units=metric`;
       } else {
+        // Use q parameter: city or city,country
+        let cityParam = "";
+        if (countryCode) {
+          cityParam = `${city},${countryCode}`;
+        } else {
+          cityParam = locationTrim;
+        }
         url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-          location
+          cityParam
         )}&appid=${API_KEY}&units=metric`;
       }
 
@@ -120,12 +177,24 @@ const Index = () => {
           throw new Error(
             language === "hi"
               ? "API कुंजी अमान्य है। कृपया वैध API कुंजी का उपयोग करें।"
+              : language === "es"
+              ? "La clave API no es válida. Por favor, use una clave válida."
+              : language === "fr"
+              ? "La clé API n'est pas valide. Veuillez utiliser une clé valide."
+              : language === "de"
+              ? "API-Schlüssel ist ungültig. Bitte verwenden Sie einen gültigen Schlüssel."
               : "API key is invalid. Please use a valid API key."
           );
         } else if (data.cod === 404) {
           throw new Error(
             language === "hi"
               ? `"${location}" शहर या पिन कोड नहीं मिला। कृपया एक अलग इनपुट आज़माएँ।`
+              : language === "es"
+              ? `"${location}" ciudad o código postal no encontrado. Por favor, pruebe otro.`
+              : language === "fr"
+              ? `"${location}" ville ou code postal non trouvé. Veuillez essayer un autre.`
+              : language === "de"
+              ? `"${location}" Stadt oder Postleitzahl nicht gefunden. Bitte versuchen Sie es mit einem anderen.`
               : `"${location}" city or postal code not found. Please try another.`
           );
         } else {
@@ -146,9 +215,16 @@ const Index = () => {
       if (wind > 14) chance += 10;
       chance = Math.min(chance, 100);
 
-      // Format date according to selected language
+      const localeMapForDate = {
+        hi: "hi-IN",
+        en: "en-US",
+        es: "es-ES",
+        fr: "fr-FR",
+        de: "de-DE",
+      };
+
       const date = new Date().toLocaleDateString(
-        language === "hi" ? "hi-IN" : "en-US"
+        localeMapForDate[language] || "en-US"
       );
 
       setResult({
@@ -166,6 +242,12 @@ const Index = () => {
       toast.success(
         language === "hi"
           ? `${data.name} का मौसम डेटा मिल गया!`
+          : language === "es"
+          ? `¡Datos meteorológicos para ${data.name} recibidos!`
+          : language === "fr"
+          ? `Données météo pour ${data.name} reçues !`
+          : language === "de"
+          ? `Wetterdaten für ${data.name} empfangen!`
           : `Weather data for ${data.name} received!`
       );
     } catch (err) {
@@ -176,6 +258,12 @@ const Index = () => {
         setError(
           language === "hi"
             ? "कुछ गलत हुआ, कृपया दोबारा कोशिश करें"
+            : language === "es"
+            ? "Algo salió mal, inténtelo de nuevo"
+            : language === "fr"
+            ? "Quelque chose a mal tourné, veuillez réessayer"
+            : language === "de"
+            ? "Etwas ist schief gelaufen, bitte versuchen Sie es erneut"
             : "Something went wrong, please try again"
         );
       }
@@ -184,12 +272,17 @@ const Index = () => {
     }
   };
 
-  // Share weather info using native share or fallback to clipboard
   const handleShare = () => {
     if (!result) {
       toast.error(
         language === "hi"
           ? "कोई डेटा नहीं है साझा करने के लिए"
+          : language === "es"
+          ? "No hay datos para compartir"
+          : language === "fr"
+          ? "Pas de données à partager"
+          : language === "de"
+          ? "Keine Daten zum Teilen"
           : "No data to share"
       );
       return;
@@ -197,6 +290,12 @@ const Index = () => {
     const shareText =
       language === "hi"
         ? `${result.cityName} में स्कूल बंद होने की संभावना: ${result.chance}%`
+        : language === "es"
+        ? `Probabilidad de cierre de escuelas en ${result.cityName}: ${result.chance}%`
+        : language === "fr"
+        ? `Chance de fermeture d'école à ${result.cityName} : ${result.chance}%`
+        : language === "de"
+        ? `Wahrscheinlichkeit der Schulschließung in ${result.cityName}: ${result.chance}%`
         : `Chance of school closure in ${result.cityName}: ${result.chance}%`;
 
     if (navigator.share) {
@@ -209,15 +308,26 @@ const Index = () => {
           toast.error(
             language === "hi"
               ? "साझा करने में विफल"
+              : language === "es"
+              ? "Error al compartir"
+              : language === "fr"
+              ? "Échec du partage"
+              : language === "de"
+              ? "Teilen fehlgeschlagen"
               : "Failed to share"
           );
         });
     } else {
-      // Fallback to clipboard
       navigator.clipboard.writeText(shareText);
       toast.success(
         language === "hi"
           ? "साझा किया गया (क्लिपबोर्ड में कॉपी किया गया)"
+          : language === "es"
+          ? "Compartido (copiado al portapapeles)"
+          : language === "fr"
+          ? "Partagé (copié dans le presse-papiers)"
+          : language === "de"
+          ? "Geteilt (in die Zwischenablage kopiert)"
           : "Shared (copied to clipboard)"
       );
     }
@@ -255,14 +365,32 @@ const Index = () => {
             <span className="text-sm text-gray-600">{currentDate}</span>
           </div>
           <div>
+            {/* Language dropdown expanded with more languages */}
             <select
               className="border rounded-md px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={language}
-              onChange={(e) => setLanguage(e.target.value as "hi" | "en")}
-              aria-label={language === "hi" ? "भाषा चुनें" : "Select Language"}
+              onChange={(e) =>
+                setLanguage(
+                  e.target.value as "hi" | "en" | "es" | "fr" | "de"
+                )
+              }
+              aria-label={
+                language === "hi"
+                  ? "भाषा चुनें"
+                  : language === "es"
+                  ? "Seleccione el idioma"
+                  : language === "fr"
+                  ? "Sélectionner la langue"
+                  : language === "de"
+                  ? "Sprache wählen"
+                  : "Select Language"
+              }
             >
-              <option value="hi">हिन्दी</option>
-              <option value="en">English</option>
+              {supportedLanguages.map(({ code, label }) => (
+                <option value={code} key={code}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -275,8 +403,14 @@ const Index = () => {
               onChange={(e) => setCityOrPin(e.target.value)}
               placeholder={
                 language === "hi"
-                  ? "शहर या पिन कोड टाइप करें, जैसे: शिमला या 814146"
-                  : "Type city or postal code, e.g.: Shimla or 814146"
+                  ? "शहर, देश (कोड) या पिन कोड टाइप करें, जैसे: शिमला या 814146 या 75001,FR"
+                  : language === "es"
+                  ? "Escriba ciudad, país (código) o código postal, ej.: Madrid o 75001,FR"
+                  : language === "fr"
+                  ? "Tapez ville, pays (code) ou code postal, ex: Paris ou 75001,FR"
+                  : language === "de"
+                  ? "Geben Sie Stadt, Land (Code) oder Postleitzahl ein, z.B.: Berlin oder 75001,FR"
+                  : "Type city, country(code), or postal code, e.g.: London,UK or 75001,FR"
               }
               className="flex-grow"
             />
@@ -288,9 +422,21 @@ const Index = () => {
               {loading
                 ? language === "hi"
                   ? "लोड हो रहा है..."
+                  : language === "es"
+                  ? "Cargando..."
+                  : language === "fr"
+                  ? "Chargement..."
+                  : language === "de"
+                  ? "Wird geladen..."
                   : "Loading..."
                 : language === "hi"
                 ? "चेक करें ❄️"
+                : language === "es"
+                ? "Comprobar ❄️"
+                : language === "fr"
+                ? "Vérifier ❄️"
+                : language === "de"
+                ? "Prüfen ❄️"
                 : "Check ❄️"}
             </Button>
           </div>
@@ -298,7 +444,15 @@ const Index = () => {
           {favorites.length > 0 && (
             <div className="pt-2">
               <p className="text-sm text-gray-600 mb-2">
-                {language === "hi" ? "पसंदीदा शहर:" : "Favorite cities:"}
+                {language === "hi"
+                  ? "पसंदीदा शहर:"
+                  : language === "es"
+                  ? "Ciudades favoritas:"
+                  : language === "fr"
+                  ? "Villes favorites :"
+                  : language === "de"
+                  ? "Lieblingsstädte:"
+                  : "Favorite cities:"}
               </p>
               <div className="flex flex-wrap gap-2">
                 {favorites.map((fav) => (
@@ -337,6 +491,12 @@ const Index = () => {
                   <div className="text-lg font-medium text-gray-700">
                     {language === "hi"
                       ? "स्कूल बंद होने की संभावना"
+                      : language === "es"
+                      ? "Probabilidad de cierre de escuelas"
+                      : language === "fr"
+                      ? "Chance de fermeture d'école"
+                      : language === "de"
+                      ? "Wahrscheinlichkeit der Schulschließung"
                       : "Chance of school closure"}
                   </div>
                 </div>
@@ -356,52 +516,135 @@ const Index = () => {
                   aria-label={
                     language === "hi"
                       ? "पसंदीदा में जोड़ें"
+                      : language === "es"
+                      ? "Añadir a favoritos"
+                      : language === "fr"
+                      ? "Ajouter aux favoris"
+                      : language === "de"
+                      ? "Zu Favoriten hinzufügen"
                       : "Add to favorites"
                   }
                 >
                   <BookmarkPlus className="h-4 w-4" />
-                  {language === "hi" ? "पसंदीदा में जोड़ें" : "Add to favorites"}
+                  {language === "hi"
+                    ? "पसंदीदा में जोड़ें"
+                    : language === "es"
+                    ? "Añadir a favoritos"
+                    : language === "fr"
+                    ? "Ajouter aux favoris"
+                    : language === "de"
+                    ? "Zu Favoriten hinzufügen"
+                    : "Add to favorites"}
                 </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleShare}
                   className="text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-1"
-                  aria-label={language === "hi" ? "साझा करें" : "Share"}
+                  aria-label={
+                    language === "hi"
+                      ? "साझा करें"
+                      : language === "es"
+                      ? "Compartir"
+                      : language === "fr"
+                      ? "Partager"
+                      : language === "de"
+                      ? "Teilen"
+                      : "Share"
+                  }
                 >
-                  <Share2 className="h-4 w-4" />
-                  {language === "hi" ? "साझा करें" : "Share"}
+                  <Share className="h-4 w-4" />
+                  {language === "hi"
+                    ? "साझा करें"
+                    : language === "es"
+                    ? "Compartir"
+                    : language === "fr"
+                    ? "Partager"
+                    : language === "de"
+                    ? "Teilen"
+                    : "Share"}
                 </Button>
               </div>
 
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="flex flex-col items-center p-2 bg-white rounded-lg shadow-sm">
                   <Snowflake className="h-6 w-6 text-blue-500 mb-1" />
-                  <div className="text-sm text-gray-500">{language === "hi" ? "बर्फ़" : "Snow"}</div>
+                  <div className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "बर्फ़"
+                      : language === "es"
+                      ? "Nieve"
+                      : language === "fr"
+                      ? "Neige"
+                      : language === "de"
+                      ? "Schnee"
+                      : "Snow"}
+                  </div>
                   <div className="font-semibold">{result.snow} cm</div>
                 </div>
 
                 <div className="flex flex-col items-center p-2 bg-white rounded-lg shadow-sm">
                   <Thermometer className="h-6 w-6 text-red-500 mb-1" />
-                  <div className="text-sm text-gray-500">{language === "hi" ? "तापमान" : "Temperature"}</div>
+                  <div className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "तापमान"
+                      : language === "es"
+                      ? "Temperatura"
+                      : language === "fr"
+                      ? "Température"
+                      : language === "de"
+                      ? "Temperatur"
+                      : "Temperature"}
+                  </div>
                   <div className="font-semibold">{result.temp}°C</div>
                 </div>
 
                 <div className="flex flex-col items-center p-2 bg-white rounded-lg shadow-sm">
                   <Wind className="h-6 w-6 text-gray-500 mb-1" />
-                  <div className="text-sm text-gray-500">{language === "hi" ? "हवा" : "Wind"}</div>
+                  <div className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "हवा"
+                      : language === "es"
+                      ? "Viento"
+                      : language === "fr"
+                      ? "Vent"
+                      : language === "de"
+                      ? "Wind"
+                      : "Wind"}
+                  </div>
                   <div className="font-semibold">{result.wind} m/s</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="flex flex-col items-center p-2 bg-white rounded-lg shadow-sm">
-                  <div className="text-sm text-gray-500">{language === "hi" ? "अनुभव होता है" : "Feels Like"}</div>
+                  <div className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "अनुभव होता है"
+                      : language === "es"
+                      ? "Sensación térmica"
+                      : language === "fr"
+                      ? "Ressenti"
+                      : language === "de"
+                      ? "Gefühlte Temperatur"
+                      : "Feels Like"}
+                  </div>
                   <div className="font-semibold">{result.feels_like}°C</div>
                 </div>
 
                 <div className="flex flex-col items-center p-2 bg-white rounded-lg shadow-sm">
-                  <div className="text-sm text-gray-500">{language === "hi" ? "आर्द्रता" : "Humidity"}</div>
+                  <div className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "आर्द्रता"
+                      : language === "es"
+                      ? "Humedad"
+                      : language === "fr"
+                      ? "Humidité"
+                      : language === "de"
+                      ? "Feuchtigkeit"
+                      : "Humidity"}
+                  </div>
                   <div className="font-semibold">{result.humidity}%</div>
                 </div>
               </div>
@@ -409,7 +652,17 @@ const Index = () => {
               <div className="mt-4 p-2 bg-white rounded-lg shadow-sm flex items-center justify-between">
                 <div className="flex items-center">
                   <History className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm text-gray-500">{language === "hi" ? "जाँच की तारीख" : "Checked date"}</span>
+                  <span className="text-sm text-gray-500">
+                    {language === "hi"
+                      ? "जाँच की तारीख"
+                      : language === "es"
+                      ? "Fecha de consulta"
+                      : language === "fr"
+                      ? "Date de vérification"
+                      : language === "de"
+                      ? "Überprüfungsdatum"
+                      : "Checked date"}
+                  </span>
                 </div>
                 <div className="text-sm font-medium">{result.date}</div>
               </div>
@@ -419,7 +672,17 @@ const Index = () => {
       </Card>
 
       <div className="mt-4 text-xs text-blue-200 text-center">
-        <p>{language === "hi" ? "OpenWeatherMap API का उपयोग करके बनाया गया" : "Built using OpenWeatherMap API"}</p>
+        <p>
+          {language === "hi"
+            ? "OpenWeatherMap API का उपयोग करके बनाया गया"
+            : language === "es"
+            ? "Construido usando la API de OpenWeatherMap"
+            : language === "fr"
+            ? "Construit avec l'API OpenWeatherMap"
+            : language === "de"
+            ? "Mit der OpenWeatherMap-API erstellt"
+            : "Built using OpenWeatherMap API"}
+        </p>
         <p>© 2025 स्नो डे प्रेडिक्टर</p>
       </div>
     </div>
