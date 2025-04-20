@@ -139,17 +139,27 @@ const Index = () => {
 
       // Detect postal code (digits) input
       // If with country code, use zip=ZIP,COUNTRY_CODE form as per OpenWeatherMap docs
-      // Else if digits only, default to US
-      const isPostalCode = /^[0-9]{3,10}$/.test(
-        countryCode ? city : locationTrim
-      );
+      // Else if digits only, default to country based on some guess or fallback to US
+      const postalInput = countryCode ? city : locationTrim;
+      const isPostalCode = /^[0-9]{3,10}$/.test(postalInput);
+
+      // Determine sensible default country for postal codes without country
+      const getDefaultCountry = (postal: string) => {
+        // Indian PIN code is 6 digits, starting typically from 1 to 9 (no 0 start)
+        if (/^[1-9][0-9]{5}$/.test(postal)) {
+          return "IN";
+        }
+        // Could add more rules here for other countries if needed
+        return "US"; // fallback default
+      };
 
       if (isPostalCode) {
         if (countryCode) {
           zipOrCityParam = `${city},${countryCode}`;
         } else {
-          // Default country to US for zip codes with no country
-          zipOrCityParam = `${countryCode ? city : locationTrim},US`;
+          // Guess country for postal codes without country included
+          const defaultCountry = getDefaultCountry(postalInput);
+          zipOrCityParam = `${postalInput},${defaultCountry}`;
         }
         url = `https://api.openweathermap.org/data/2.5/weather?zip=${encodeURIComponent(
           zipOrCityParam
