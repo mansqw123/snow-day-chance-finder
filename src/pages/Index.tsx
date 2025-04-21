@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,7 +98,6 @@ const Index = () => {
     }
   };
 
-  // Improved getWeather to handle country codes in cityOrPin input and postal code + country detection
   const getWeather = async (location: string = cityOrPin) => {
     if (!location.trim()) {
       setError(
@@ -123,8 +121,6 @@ const Index = () => {
     try {
       const API_KEY = "4d8fb5b93d4af21d66a2948710284366";
 
-      // Check if input contains comma, parse city and country
-      // Examples: "London,UK" or "Mumbai,IN" or "75001,FR"
       let city = "";
       let countryCode = "";
       let zipOrCityParam = "";
@@ -137,27 +133,20 @@ const Index = () => {
         countryCode = parts[1].trim().toUpperCase();
       }
 
-      // Detect postal code (digits) input
-      // If with country code, use zip=ZIP,COUNTRY_CODE form as per OpenWeatherMap docs
-      // Else if digits only, default to country based on some guess or fallback to US
       const postalInput = countryCode ? city : locationTrim;
       const isPostalCode = /^[0-9]{3,10}$/.test(postalInput);
 
-      // Determine sensible default country for postal codes without country
       const getDefaultCountry = (postal: string) => {
-        // Indian PIN code is 6 digits, starting typically from 1 to 9 (no 0 start)
         if (/^[1-9][0-9]{5}$/.test(postal)) {
           return "IN";
         }
-        // Could add more rules here for other countries if needed
-        return "US"; // fallback default
+        return "US";
       };
 
       if (isPostalCode) {
         if (countryCode) {
           zipOrCityParam = `${city},${countryCode}`;
         } else {
-          // Guess country for postal codes without country included
           const defaultCountry = getDefaultCountry(postalInput);
           zipOrCityParam = `${postalInput},${defaultCountry}`;
         }
@@ -165,7 +154,6 @@ const Index = () => {
           zipOrCityParam
         )}&appid=${API_KEY}&units=metric`;
       } else {
-        // Use q parameter: city or city,country
         let cityParam = "";
         if (countryCode) {
           cityParam = `${city},${countryCode}`;
@@ -361,7 +349,7 @@ const Index = () => {
         ))}
       </div>
 
-      <Card className="w-full max-w-md p-6 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl relative z-10">
+      <Card className="w-full max-w-md p-6 bg-white/900 backdrop-blur-sm rounded-xl shadow-2xl relative z-10">
         <div className="flex items-center justify-center mb-4">
           <CloudSnow className="h-10 w-10 text-blue-600 mr-2" />
           <h1 className="text-3xl font-bold text-center text-blue-800">
@@ -375,7 +363,6 @@ const Index = () => {
             <span className="text-sm text-gray-600">{currentDate}</span>
           </div>
           <div>
-            {/* Language dropdown expanded with more languages */}
             <select
               className="border rounded-md px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={language}
