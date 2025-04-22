@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Snowflake } from "lucide-react";
 
 // Component for showing snowflake animation
@@ -18,7 +18,7 @@ const SnowfallEffect = () => {
     return (
       <div
         key={i}
-        className="snowflake"
+        className="snowflake absolute"
         style={{
           left,
           fontSize: `${size}em`,
@@ -31,7 +31,7 @@ const SnowfallEffect = () => {
     );
   });
   
-  return <div className="fixed inset-0 pointer-events-none">{snowflakes}</div>;
+  return <div className="fixed inset-0 pointer-events-none z-10">{snowflakes}</div>;
 };
 
 const Index = () => {
@@ -68,21 +68,21 @@ const Index = () => {
     <div className="container mx-auto px-4 py-8">
       <SnowfallEffect />
       
-      <h1 className="text-3xl font-bold text-center mb-8">
+      <h1 className="text-3xl font-bold text-center mb-8 text-blue-600">
         Snow Day Chance Finder
       </h1>
       
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
+      <Card className="max-w-md mx-auto shadow-lg border-blue-100">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
           <CardTitle className="flex items-center justify-center gap-2">
             <Snowflake className="h-6 w-6 text-blue-500" />
             <span>Check Snow Day Probability</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="space-y-4">
             <div>
-              <label htmlFor="location" className="block text-sm font-medium mb-1">
+              <label htmlFor="location" className="block text-sm font-medium mb-1 text-gray-700">
                 Location
               </label>
               <Input
@@ -90,11 +90,12 @@ const Index = () => {
                 placeholder="Enter city or zip code"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                className="border-blue-200 focus:border-blue-400 focus:ring-blue-300"
               />
             </div>
             
             <div>
-              <label htmlFor="date" className="block text-sm font-medium mb-1">
+              <label htmlFor="date" className="block text-sm font-medium mb-1 text-gray-700">
                 Date
               </label>
               <Input
@@ -102,18 +103,19 @@ const Index = () => {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                className="border-blue-200 focus:border-blue-400 focus:ring-blue-300"
               />
             </div>
             
             <Button 
-              className="w-full" 
+              className="w-full bg-blue-500 hover:bg-blue-600" 
               onClick={checkSnowChance}
             >
               Check Snow Chance
             </Button>
             
             {snowChance !== null && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-md">
+              <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-100 animate-fade-in">
                 <p className="text-center font-semibold">
                   Chance of Snow: <span className="text-blue-600 text-xl">{snowChance}%</span>
                 </p>
@@ -122,6 +124,11 @@ const Index = () => {
                    snowChance > 40 ? "Moderate chance of snow." : 
                    "Low chance of snow."}
                 </p>
+                {snowChance > 70 && (
+                  <div className="flex justify-center mt-3">
+                    <Snowflake className="h-8 w-8 text-blue-500 animate-pulse" />
+                  </div>
+                )}
               </div>
             )}
           </div>
